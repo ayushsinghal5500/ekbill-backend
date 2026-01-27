@@ -3,63 +3,36 @@ import {upsertCustomer,insertCustomerAddress, updateCustomerCore, replaceCustome
 import { createNotification } from "../models/notificationModel.js";
 
 export const createCustomerService = async (data) => {
-  const {
-    business_unique_code,
-    user_unique_code,
-    customer_name,
-    phone,
-    country_code,
-    gender,
-    dob,
-    anniversary,
-    gstin,
-    notes,
-    address
-  } = data;
+  const { business_unique_code, user_unique_code, customer_name, phone, country_code, gender, dob, anniversary, gstin, notes, address } = data;
 
-  const result = await upsertCustomer({
-    business_unique_code,
-    customer_name,
-    phone,
-    country_code,
-    user_unique_code
-  });
-
+  const result = await upsertCustomer({ business_unique_code, customer_name, phone, country_code, user_unique_code });
   const customerCode = result.customer.customer_unique_code;
 
-  // If already exists
-  if (!result.isNew) {
-    return {
-      success: true,
-      exists: true,
-      message: "Customer already exists with this phone number",
-      customer: result.customer
-    };
-  }
+  if (!result.isNew)
+    return { success: true, exists: true, message: "Customer already exists with this phone number", customer: result.customer };
 
-  // Optional details
-  if (gender || dob || anniversary || gstin || notes) {
-    await upsertCustomerDetails(customerCode, {
-      gender,
-      dob,
-      anniversary,
-      gstin,
-      notes
-    });
-  }
+  if (gender || dob || anniversary || gstin || notes)
+    await upsertCustomerDetails(customerCode, { gender, dob, anniversary, gstin, notes });
 
-  // Optional address
-  if (address) {
+  if (address)
     await insertCustomerAddress(customerCode, user_unique_code, address);
-  }
 
-  return {
-    success: true,
-    exists: false,
-    message: "Customer created successfully",
-    customer: result.customer
-  };
+  await createNotification({
+    business_unique_code,
+    recipient_user_code: user_unique_code,
+    title: "New customer added",
+    message: `${customer_name} was added to your customer list`,
+    type: "NOTIFICATION",
+    module: "CUSTOMER",
+    reference_code: customerCode,
+    actor_type: "OWNER",
+    actor_code: user_unique_code,
+    action: "CUSTOMER_CREATED"
+  });
+
+  return { success: true, exists: false, message: "Customer created successfully", customer: result.customer };
 };
+
 
 export const updateCustomerService = async (data) => {
   const {

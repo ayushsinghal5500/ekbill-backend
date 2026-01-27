@@ -79,13 +79,28 @@ export const replaceCustomerAddress = async (customer_unique_code, user_unique_c
 };
 
 /* ================= UPDATE CUSTOMER CORE ================= */
-export const updateCustomerCore = async (business_unique_code, customer_unique_code, { customer_name, phone, country_code }) => {
-  await pool.query(
-    `UPDATE ekbill.customers
-     SET customer_name=$1, customer_phone=$2, customer_country_code=$3, updated_at=NOW()
-     WHERE business_unique_code=$4 AND customer_unique_code=$5`,
-    [customer_name, phone, country_code, business_unique_code, customer_unique_code]
-  );
+export const updateCustomerCore = async (
+  business_unique_code,
+  customer_unique_code,
+  { customer_name, phone, country_code }
+) => {
+  try {
+    await pool.query(
+      `UPDATE ekbill.customers
+       SET customer_name=$1,
+           customer_phone=$2,
+           customer_country_code=$3,
+           updated_at=NOW()
+       WHERE business_unique_code=$4
+         AND customer_unique_code=$5`,
+      [customer_name, phone, country_code, business_unique_code, customer_unique_code]
+    );
+  } catch (err) {
+    if (err.code === "23505") {
+      throw new Error("Another customer already exists with this phone number");
+    }
+    throw err;
+  }
 };
 
 /* ================= GET MINIMAL CUSTOMER LIST ================= */
