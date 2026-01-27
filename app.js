@@ -26,8 +26,19 @@ app.use(express.json({limit:"2mb"}));
 app.use(express.urlencoded({extended:true}));
 
 app.get('/', (req, res) => {
-  res.send('Hello, World!');
+  res.json({
+    message: 'Welcome to the EkBill API',
+    timestamp: new Date().toISOString(),
+  });
 });
+
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+  });
+});
+
 
 app.use('/api/auth', authRouter);
 app.use('/api/category', categoryRouter);
