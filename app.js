@@ -1,0 +1,39 @@
+import 'dotenv/config';  
+import express from 'express';
+import cookieParser from 'cookie-parser';
+import compression from 'compression';
+import logger from './config/logger.js';
+import pool from './config/dbConnection.js'; 
+import authRouter from './routes/authRoutes.js';
+import categoryRouter from './routes/categoryRoutes.js';
+import businessRouter from './routes/businessRouter.js';
+import quickBillRouter from './routes/quickbillRoutes.js'; 
+import customerRouter from './routes/customerRoutes.js'; 
+import productRouter from './routes/productRouter.js';
+import billRouter from './routes/billRoutes.js';
+import dashboardRouter from './routes/dashboardRoutes.js';
+
+import './utils/expiryAlert.js';
+
+
+export const app = express();
+
+// Middleware
+app.use(logger); 
+app.use(compression());
+app.use(cookieParser());
+app.use(express.json({limit:"2mb"}));
+app.use(express.urlencoded({extended:true}));
+
+app.get('/', (req, res) => {
+  res.send('Hello, World!');
+});
+
+app.use('/api/auth', authRouter);
+app.use('/api/category', categoryRouter);
+app.use('/api/business', businessRouter);
+app.use('/api/customer', customerRouter);
+app.use('/api/product', productRouter);
+app.use('/api/quickbill', quickBillRouter);
+app.use('/api/bill', billRouter);
+app.use ('/api/dashboard', dashboardRouter);

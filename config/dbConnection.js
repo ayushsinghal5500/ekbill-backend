@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 // Priority: config.env → .env.local → .env → Vercel env vars
 const configEnvPath = path.resolve(__dirname, '../config.env');
-const envPath = path.resolve(__dirname, '../.env');
+const envPath = path.resolve(__dirname, '../../.env');
 
 if (fs.existsSync(configEnvPath)) {
   dotenv.config({ path: configEnvPath });
@@ -42,6 +42,10 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
+  // SSL configuration for Render
+  ssl: {
+    rejectUnauthorized: false, // Render uses self-signed certificates
+  },
 });
 
 // Handle pool errors
