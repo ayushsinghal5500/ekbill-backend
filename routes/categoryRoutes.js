@@ -7,5 +7,5 @@ const router = express.Router();
 router.post("/add", authenticateJWT, addCategoryController);
 router.get("/list", authenticateJWT, getCategorylistController);
 router.delete("/:category_unique_code", authenticateJWT, deleteCategoryController);
-
+//update and single category routes can be added here in future
 export default router;

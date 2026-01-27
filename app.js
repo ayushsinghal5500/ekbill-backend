@@ -12,6 +12,7 @@ import customerRouter from './routes/customerRoutes.js';
 import productRouter from './routes/productRouter.js';
 import billRouter from './routes/billRoutes.js';
 import dashboardRouter from './routes/dashboardRoutes.js';
+import reportRouter from './routes/reportRoutes.js';
 
 import './utils/expiryAlert.js';
 
@@ -48,3 +49,4 @@ app.use('/api/product', productRouter);
 app.use('/api/quickbill', quickBillRouter);
 app.use('/api/bill', billRouter);
 app.use ('/api/dashboard', dashboardRouter);
+app.use('/api/report', reportRouter);

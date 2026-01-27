@@ -3,6 +3,7 @@ import {overviewReportsController, salesReportsController, dailyReportsControlle
 import {authenticateJWT} from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+router.use(authenticateJWT);
 router.get("/overview", overviewReportsController);
 router.get("/sales", salesReportsController);
 router.get("/daily",dailyReportsController);

@@ -2,7 +2,7 @@ import { overviewReportsService, salesReportsService, dailyReportsService, custo
 
 export const overviewReportsController = async (req, res) => {
   try {
-    const { business_unique_code } = req.user;
+       const {business_unique_code}=req.user;
     if (!business_unique_code) return res.status(401).json({ success: false, message: "Unauthorized" });
 
     const filter = req.query.filter || "overall";
