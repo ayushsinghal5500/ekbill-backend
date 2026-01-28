@@ -35,12 +35,13 @@ app.use(cors({
 
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
-    } else {
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
     }
+    console.log("Blocked by CORS:", origin);
+    return callback(null, false); // ❗ no error throw
   },
   credentials: true
 }));
+
 
 app.use(express.json({limit:"2mb"}));
 app.use(express.urlencoded({extended:true}));
