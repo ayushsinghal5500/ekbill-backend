@@ -9,7 +9,7 @@ router.use(authenticateJWT);
 router.post("/create", createCustomerController);
 router.put("/update/:customer_unique_code", updateCustomerController);
 router.post("/ledger/add", authenticateJWT, addCustomerLedgerEntryController);
-router.put("/collectionReminder/:customer_unique_code", updateCollectionReminderController);
+router.patch("/collectionReminder/:customer_unique_code", updateCollectionReminderController);
 router.get("/list", getMinimalCustomerListController);
 router.get("/details/:customer_unique_code", getCustomerDetailController)
 router.delete("/:customer_unique_code", deleteCustomerController);
