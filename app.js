@@ -15,6 +15,7 @@ import billRouter from './routes/billRoutes.js';
 import dashboardRouter from './routes/dashboardRoutes.js';
 import reportRouter from './routes/reportRoutes.js';
 import storeRouter from './routes/storeRoutes.js';
+import orderRouter from './routes/orderRoutes.js';
 
 import './utils/expiryAlert.js';
 
@@ -71,3 +72,4 @@ app.use('/api/bill', billRouter);
 app.use ('/api/dashboard', dashboardRouter);
 app.use('/api/report', reportRouter);
 app.use('/api/store', storeRouter);
+app.use('/api/order', orderRouter);

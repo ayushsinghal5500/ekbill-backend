@@ -45,3 +45,54 @@ export const createBillModel = async ({
 
   return res.rows[0];
 };
+
+
+export const getBillsList = async (business_unique_code) => {
+  const res = await pool.query(
+    `SELECT bill_unique_code, invoice_number, created_at, created_by
+     FROM ekbill.bills
+     WHERE business_unique_code=$1
+     ORDER BY created_at DESC`,
+    [business_unique_code]
+  );
+  return res.rows;
+};
+
+
+export const getBillDetails = async (bill_unique_code, business_unique_code) => {
+  const billRes = await pool.query(
+    `SELECT * FROM ekbill.bills
+     WHERE bill_unique_code=$1 AND business_unique_code=$2`,
+    [bill_unique_code, business_unique_code]
+  );
+  if (!billRes.rows.length) return null;
+
+  const itemsRes = await pool.query(
+    `SELECT bill_item_unique_code,item_name,quantity,price,line_total
+     FROM ekbill.bill_items
+     WHERE bill_unique_code=$1`,
+    [bill_unique_code]
+  );
+
+  const paymentsRes = await pool.query(
+    `SELECT bill_payment_unique_code,payment_mode,amount,remaining_due,created_at
+     FROM ekbill.bill_payments
+     WHERE bill_unique_code=$1
+     ORDER BY created_at ASC`,
+    [bill_unique_code]
+  );
+
+  const chargesRes = await pool.query(
+    `SELECT bill_charge_unique_code,charge_name,amount
+     FROM ekbill.bill_charges
+     WHERE bill_unique_code=$1`,
+    [bill_unique_code]
+  );
+
+  return {
+    bill: billRes.rows[0],
+    items: itemsRes.rows,
+    payments: paymentsRes.rows,
+    charges: chargesRes.rows
+  };
+};
