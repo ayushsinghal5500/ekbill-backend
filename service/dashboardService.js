@@ -1,10 +1,11 @@
 import {getDashboardSnapshot,getLatestDashboardNotifications,getAllNotifications} from "../models/dashboardModel.js";
 
-export const getDashboardService = async (user_unique_code) => {
-  const snapshot = await getDashboardSnapshot(user_unique_code);
-  const notifications = await getLatestDashboardNotifications(user_unique_code,5);
+export const getDashboardService = async (business_unique_code) => {
+  const snapshot = await getDashboardSnapshot(business_unique_code);
+  const notifications = await getLatestDashboardNotifications(business_unique_code,5);
 
   return {
+     business_name: snapshot.business_name,
     today_sales: Number(snapshot.today_sales),
     pending_payments: Number(snapshot.pending_payments),
     low_stock_items: Number(snapshot.low_stock_items),
@@ -13,7 +14,7 @@ export const getDashboardService = async (user_unique_code) => {
   };
 };
 
-export const getAllNotificationsService = async (user_unique_code) => {
-  const notifications = await getAllNotifications(user_unique_code);
+export const getAllNotificationsService = async (business_unique_code) => {
+  const notifications = await getAllNotifications(business_unique_code);
   return notifications;
 };
