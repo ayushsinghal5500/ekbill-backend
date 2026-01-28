@@ -271,6 +271,19 @@ CREATE TABLE IF NOT EXISTS ekbill.customer_ledger (
 );
 CREATE INDEX IF NOT EXISTS idx_customer_ledger_business_customer ON ekbill.customer_ledger(business_unique_code,customer_unique_code);
 `;
+
+const publicStoresTable = `
+CREATE TABLE ekbill.public_stores (
+  store_unique_code VARCHAR(50) PRIMARY KEY,
+  business_unique_code VARCHAR(50) NOT NULL REFERENCES ekbill.business_profiles(business_unique_code) ON DELETE CASCADE,
+  public_slug VARCHAR(120) NOT NULL UNIQUE,
+  store_name VARCHAR(255) NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  is_accepting_orders BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`;
+
 (async () => {
   try {
     await pool.query(createSchema);
@@ -291,6 +304,7 @@ CREATE INDEX IF NOT EXISTS idx_customer_ledger_business_customer ON ekbill.custo
     await pool.query(customerDetailsTable);
     await pool.query(businessStaffRolesTable);
     await pool.query(busineesLedgerTable);
+    await pool.query(publicStoresTable);
 
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_entity_addresses_lookup

@@ -1,5 +1,27 @@
 import pool from "../config/dbConnection.js";
 import { generateUniqueCode } from "../utils/codeGenerator.js";
+import { nanoid } from "nanoid";
+
+/* ================= ENSURE PUBLIC STORE EXISTS ================= */
+const ensurePublicStore = async (client, business_unique_code, business_name) => {
+  const existing = await client.query(
+    `SELECT store_unique_code FROM ekbill.public_stores WHERE business_unique_code=$1`,
+    [business_unique_code]
+  );
+  if (existing.rows.length) return;
+
+  await client.query(
+    `INSERT INTO ekbill.public_stores
+     (store_unique_code, business_unique_code, public_slug, store_name)
+     VALUES ($1,$2,$3,$4)`,
+    [
+      generateUniqueCode({ table: "STORE" }),
+      business_unique_code,
+      nanoid(10),
+      business_name || "My Store"
+    ]
+  );
+};
 
 /* ================= FIND BUSINESS ================= */
 export const findBusinessByOwner = async (user_unique_code) => {
@@ -24,7 +46,6 @@ export const createBusiness = async ({ user_unique_code, phone }) => {
   );
 
   if (res.rows[0]) return res.rows[0];
-
   return await findBusinessByOwner(user_unique_code);
 };
 
@@ -56,9 +77,14 @@ export const addbusiness = async (business_unique_code, user_unique_code, busine
           user_unique_code
         ]
       );
+
+      // 🔹 AUTO CREATE PUBLIC STORE IF NOT EXISTS
+      if (profile.business_name) {
+        await ensurePublicStore(client, business_unique_code, profile.business_name);
+      }
     }
 
-    /* ===== BUSINESS ASSETS (manual upsert, no constraint needed) ===== */
+    /* ===== BUSINESS ASSETS ===== */
     if (assets?.length) {
       for (const asset of assets) {
         const existing = await client.query(
@@ -174,7 +200,7 @@ export const addbusiness = async (business_unique_code, user_unique_code, busine
 
     await client.query("COMMIT");
 
-    const res = await client.query(
+    const res = await pool.query(
       `SELECT * FROM ekbill.business_profiles WHERE business_unique_code=$1`,
       [business_unique_code]
     );
@@ -213,7 +239,6 @@ export const getBusinessByUserCode = async (user_unique_code) => {
       bf.upi_id,
       bf.bank_confirmed,
 
-      /* ASSETS */
       COALESCE((
         SELECT json_agg(jsonb_build_object(
           'asset_type', ba.asset_type,
@@ -227,7 +252,6 @@ export const getBusinessByUserCode = async (user_unique_code) => {
         WHERE ba.business_unique_code = bp.business_unique_code
       ), '[]') AS assets,
 
-      /* ADDRESSES */
       COALESCE((
         SELECT json_agg(jsonb_build_object(
           'address_unique_code', a.address_unique_code,

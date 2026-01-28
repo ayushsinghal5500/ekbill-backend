@@ -25,6 +25,7 @@
     "libphonenumber-js": "^1.12.33",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
+    "nanoid": "^5.1.6",
     "node-cron": "^4.2.1",
     "otp-generator": "^4.0.1",
     "pg": "^8.16.3",
