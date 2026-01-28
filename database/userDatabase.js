@@ -222,8 +222,7 @@ CREATE TABLE IF NOT EXISTS ekbill.customers (
   customer_id SERIAL PRIMARY KEY,
   customer_unique_code VARCHAR(50) NOT NULL UNIQUE,
   business_unique_code VARCHAR(50) NOT NULL REFERENCES ekbill.business_profiles(business_unique_code) ON DELETE CASCADE,
-  added_by_user_unique_code VARCHAR(50) NOT NULL
-    REFERENCES ekbill.users(user_unique_code),
+  added_by_user_unique_code VARCHAR(50),
   customer_name VARCHAR(255) NOT NULL,
   customer_phone VARCHAR(20),
   customer_country_code VARCHAR(10),
