@@ -186,6 +186,8 @@ CREATE TABLE ekbill.quick_bills (
   customer_name VARCHAR(255),
   customer_phone VARCHAR(20),
   customer_country_code VARCHAR(10),
+  customer_gstin VARCHAR(20), 
+  customer_address TEXT,
   billing_user_phone VARCHAR(20),
   notes TEXT,
   invoice_date DATE DEFAULT CURRENT_DATE,

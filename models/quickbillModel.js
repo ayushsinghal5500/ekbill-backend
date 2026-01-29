@@ -7,46 +7,16 @@ export const insertQuickBill = async (client, bill) => {
 
   await client.query(
     `INSERT INTO ekbill.quick_bills (
-      quick_bill_unique_code,business_unique_code,invoice_name,customer_name,
-      customer_phone,customer_country_code,billing_user_phone,notes,
-      invoice_date,due_date,subtotal,has_discount,has_gst,
-      discount_type,discount_value,discount_amount,
-      gst_type,gst_percentage,is_gst_inclusive,
-      cgst_amount,sgst_amount,igst_amount,total_gst_amount,
-      grand_total,created_by
-    ) VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
-      $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
-    )`,
-    [
-      quick_bill_unique_code,
-      bill.business_unique_code,
-      bill.invoice_name,
-      bill.customer_name || null,
-      bill.customer_phone || null,
-      bill.customer_country_code || null,
-      bill.billing_user_phone || null,
-      bill.notes || null,
-      bill.invoice_date || null,
-      bill.due_date || null,
-      bill.subtotal,
-      bill.has_discount,
-      bill.has_gst,
-      bill.discount_type,
-      bill.discount_value,
-      bill.discount_amount,
-      bill.gst_type,
-      bill.gst_percentage,
-      bill.is_gst_inclusive,
-      bill.cgst_amount,
-      bill.sgst_amount,
-      bill.igst_amount,
-      bill.total_gst_amount,
-      bill.grand_total,
-      bill.created_by
-    ]
+      quick_bill_unique_code, business_unique_code, invoice_name, customer_name, customer_phone, customer_country_code,
+      customer_gstin, customer_address, billing_user_phone, notes, invoice_date, due_date,subtotal, has_discount, has_gst,
+      discount_type, discount_value, discount_amount,gst_type, gst_percentage, is_gst_inclusive, cgst_amount, sgst_amount, igst_amount,
+      total_gst_amount, grand_total, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
+    [quick_bill_unique_code, bill.business_unique_code, bill.invoice_name,bill.customer_name || null, bill.customer_phone || null, bill.customer_country_code || null,
+      bill.customer_gstin || null, bill.customer_address || null, bill.billing_user_phone || null,bill.notes || null, bill.invoice_date || null, bill.due_date || null,
+      bill.subtotal, bill.has_discount, bill.has_gst,bill.discount_type, bill.discount_value, bill.discount_amount,
+      bill.gst_type, bill.gst_percentage, bill.is_gst_inclusive,bill.cgst_amount, bill.sgst_amount, bill.igst_amount,
+      bill.total_gst_amount, bill.grand_total, bill.created_by ]
   );
-
   return quick_bill_unique_code;
 };
 
