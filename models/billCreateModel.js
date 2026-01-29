@@ -1,3 +1,4 @@
+import pool from "../config/dbConnection.js";
 import { generateUniqueCode } from "../utils/codeGenerator.js";
 
 export const createBillModel = async ({

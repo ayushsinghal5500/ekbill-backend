@@ -1,10 +1,13 @@
 import pool from "../config/dbConnection.js";
-import { createBillModel,getBillDetails,getBillsList } from "../models/billCreateModel.js";
+import {createBillModel,getBillDetails,getBillsList,} from "../models/billCreateModel.js";
 import { addItem } from "../models/billItemsModel.js";
 import { addCharge } from "../models/billChargesModel.js";
 import { addDiscount } from "../models/billDiscountsModel.js";
 import { addPayment } from "../models/BillPaymentsModel.js";
-import { addCustomerLedgerEntry, getLastCustomerBalance } from "../models/customerLedgerModel.js";
+import {
+  addCustomerLedgerEntry,
+  getLastCustomerBalance,
+} from "../models/customerLedgerModel.js";
 import { handleLowStockAlert } from "../utils/lowStockAlert.js";
 
 export const createBillService = async (data) => {
@@ -22,17 +25,20 @@ export const createBillService = async (data) => {
     let totalPaid = 0;
 
     // 🔹 CREATE BILL
-    const bill = await createBillModel({
-      ...data.bill,
-      business_unique_code,
-      user_unique_code
-    }, client);
+    const bill = await createBillModel(
+      {
+        ...data.bill,
+        business_unique_code,
+        user_unique_code,
+      },
+      client,
+    );
 
     const bill_unique_code = bill.bill_unique_code;
 
     // 🔹 ITEMS + STOCK
     const processedProducts = new Set(); // Track products for low stock alert
-    
+
     if (Array.isArray(data.items)) {
       for (const item of data.items) {
         // Validate item
@@ -40,7 +46,9 @@ export const createBillService = async (data) => {
           throw new Error("Product unique code is required for items");
         }
         if (!item.quantity || Number(item.quantity) <= 0) {
-          throw new Error(`Invalid quantity for product ${item.product_unique_code}`);
+          throw new Error(
+            `Invalid quantity for product ${item.product_unique_code}`,
+          );
         }
 
         // Lock rows for this product first
@@ -48,7 +56,7 @@ export const createBillService = async (data) => {
           `SELECT 1 FROM ekbill.product_stock_history
            WHERE product_unique_code=$1 AND business_unique_code=$2
            FOR UPDATE`,
-          [item.product_unique_code, business_unique_code]
+          [item.product_unique_code, business_unique_code],
         );
 
         // Get current stock
@@ -59,14 +67,16 @@ export const createBillService = async (data) => {
             ),0) AS current_stock
            FROM ekbill.product_stock_history
            WHERE product_unique_code=$1 AND business_unique_code=$2`,
-          [item.product_unique_code, business_unique_code]
+          [item.product_unique_code, business_unique_code],
         );
 
         const current_stock = Number(stockRes.rows[0].current_stock);
         const quantity = Number(item.quantity);
-        
+
         if (current_stock < quantity) {
-          throw new Error(`Insufficient stock for product ${item.product_unique_code}. Available: ${current_stock}, Required: ${quantity}`);
+          throw new Error(
+            `Insufficient stock for product ${item.product_unique_code}. Available: ${current_stock}, Required: ${quantity}`,
+          );
         }
 
         // Add item to bill
@@ -88,16 +98,19 @@ export const createBillService = async (data) => {
             item.unit || "PCS",
             item.selling_price || 0,
             `Sold in bill ${bill.invoice_number}`,
-            user_unique_code
-          ]
+            user_unique_code,
+          ],
         );
 
         // 🔹 Check low stock alert (only once per product in this transaction)
         if (!processedProducts.has(item.product_unique_code)) {
-          await handleLowStockAlert({
-            product_unique_code: item.product_unique_code,
-            business_unique_code
-          }, client);
+          await handleLowStockAlert(
+            {
+              product_unique_code: item.product_unique_code,
+              business_unique_code,
+            },
+            client,
+          );
           processedProducts.add(item.product_unique_code);
         }
       }
@@ -123,40 +136,47 @@ export const createBillService = async (data) => {
 
     // 🔹 PAYMENTS
     const processPayment = async (mode, amount) => {
-      if (!bill.customer_unique_code) throw new Error("Customer required for payments");
+      if (!bill.customer_unique_code)
+        throw new Error("Customer required for payments");
 
       const paymentAmount = Number(amount);
       if (paymentAmount <= 0) return;
 
-      await addPayment({
-        bill_unique_code,
-        user_unique_code,
-        customer_unique_code: bill.customer_unique_code,
-        payment_mode: mode,
-        amount_paid: paymentAmount
-      }, client);
+      await addPayment(
+        {
+          bill_unique_code,
+          user_unique_code,
+          customer_unique_code: bill.customer_unique_code,
+          payment_mode: mode,
+          amount_paid: paymentAmount,
+        },
+        client,
+      );
 
       totalPaid += paymentAmount;
 
       const balance_before = await getLastCustomerBalance(
-        business_unique_code, 
-        bill.customer_unique_code, 
-        client
+        business_unique_code,
+        bill.customer_unique_code,
+        client,
       );
       const balance_after = balance_before - paymentAmount;
 
-      await addCustomerLedgerEntry({
-        business_unique_code,
-        customer_unique_code: bill.customer_unique_code,
-        transaction_type: "YOU_GOT",
-        transaction_source: "BILL",
-        payment_mode: mode,
-        amount: paymentAmount,
-        balance_before,
-        balance_after,
-        reference_bill_code: bill_unique_code,
-        user_unique_code
-      }, client);
+      await addCustomerLedgerEntry(
+        {
+          business_unique_code,
+          customer_unique_code: bill.customer_unique_code,
+          transaction_type: "YOU_GOT",
+          transaction_source: "BILL",
+          payment_mode: mode,
+          amount: paymentAmount,
+          balance_before,
+          balance_after,
+          reference_bill_code: bill_unique_code,
+          user_unique_code,
+        },
+        client,
+      );
     };
 
     if (Array.isArray(data.payments)) {
@@ -171,38 +191,43 @@ export const createBillService = async (data) => {
     if (bill.customer_unique_code && grand_total > totalPaid) {
       const due = grand_total - totalPaid;
       const balance_before = await getLastCustomerBalance(
-        business_unique_code, 
-        bill.customer_unique_code, 
-        client
+        business_unique_code,
+        bill.customer_unique_code,
+        client,
       );
       const balance_after = balance_before + due;
 
-      await addCustomerLedgerEntry({
-        business_unique_code,
-        customer_unique_code: bill.customer_unique_code,
-        transaction_type: "YOU_GAVE",
-        transaction_source: "BILL",
-        payment_mode: "OTHER",
-        amount: due,
-        balance_before,
-        balance_after,
-        reference_bill_code: bill_unique_code,
-        user_unique_code
-      }, client);
+      await addCustomerLedgerEntry(
+        {
+          business_unique_code,
+          customer_unique_code: bill.customer_unique_code,
+          transaction_type: "YOU_GAVE",
+          transaction_source: "BILL",
+          payment_mode: "OTHER",
+          amount: due,
+          balance_before,
+          balance_after,
+          reference_bill_code: bill_unique_code,
+          user_unique_code,
+        },
+        client,
+      );
     }
 
     await client.query("COMMIT");
 
     // Get final bill details with payment summary
     const billDetails = await client.query(
-      `SELECT b.*, 
-              COALESCE(SUM(p.amount_paid), 0) as total_paid
-       FROM ekbill.bills b
-       LEFT JOIN ekbill.bill_payments p ON b.bill_unique_code = p.bill_unique_code
-       WHERE b.bill_unique_code = $1
-       GROUP BY b.bill_unique_code`,
-      [bill_unique_code]
-    );
+      `SELECT b.*,
+          COALESCE((
+            SELECT SUM(p.amount_paid)
+            FROM ekbill.bill_payments p
+            WHERE p.bill_unique_code = b.bill_unique_code
+          ), 0) AS total_paid
+          FROM ekbill.bills b   
+          WHERE b.bill_unique_code = $1`,      
+          [bill_unique_code],   
+        );
 
     const finalBill = billDetails.rows[0];
 
@@ -210,10 +235,13 @@ export const createBillService = async (data) => {
       ...finalBill,
       paid_amount: totalPaid,
       remaining_due: grand_total - totalPaid,
-      payment_status: totalPaid >= grand_total ? "PAID" : 
-      totalPaid > 0 ? "PARTIAL" : "UNPAID"
+      payment_status:
+        totalPaid >= grand_total
+          ? "PAID"
+          : totalPaid > 0
+            ? "PARTIAL"
+            : "UNPAID",
     };
-
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Bill creation error:", err);
@@ -224,11 +252,15 @@ export const createBillService = async (data) => {
 };
 
 export const getBillsListService = async (business_unique_code) => {
-  if (!business_unique_code) throw new Error("Business unique code is required");
+  if (!business_unique_code)
+    throw new Error("Business unique code is required");
   return await getBillsList(business_unique_code);
 };
-  
-export const getBillDetailsService = async (bill_unique_code, business_unique_code) => {
+
+export const getBillDetailsService = async (
+  bill_unique_code,
+  business_unique_code,
+) => {
   if (!bill_unique_code) throw new Error("Bill code is required");
   if (!business_unique_code) throw new Error("Business code is required");
 
