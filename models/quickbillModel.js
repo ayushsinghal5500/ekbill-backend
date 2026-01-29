@@ -95,14 +95,47 @@ export const insertQuickBillCharges = async (client, quick_bill_unique_code, cha
 /* ================= GET BILL FULL ================= */
 export const getQuickBillsList = async (business_unique_code) => {
   const res = await pool.query(
-    `SELECT quick_bill_unique_code, invoice_name, created_at, created_by
-     FROM ekbill.quick_bills
-     WHERE business_unique_code=$1
-     ORDER BY created_at DESC`,
+    `
+    SELECT 
+      qb.quick_bill_unique_code,
+      qb.invoice_name,
+      qb.customer_name,
+      qb.grand_total,
+      qb.created_at,
+      qb.created_by,
+
+      COALESCE((
+        SELECT SUM(qp.amount)
+        FROM ekbill.quick_bill_payments qp
+        WHERE qp.quick_bill_unique_code = qb.quick_bill_unique_code
+      ), 0) AS total_paid,
+
+      CASE
+        WHEN COALESCE((
+          SELECT SUM(qp.amount)
+          FROM ekbill.quick_bill_payments qp
+          WHERE qp.quick_bill_unique_code = qb.quick_bill_unique_code
+        ), 0) = 0 THEN 'UNPAID'
+
+        WHEN COALESCE((
+          SELECT SUM(qp.amount)
+          FROM ekbill.quick_bill_payments qp
+          WHERE qp.quick_bill_unique_code = qb.quick_bill_unique_code
+        ), 0) < qb.grand_total THEN 'PARTIAL'
+
+        ELSE 'PAID'
+      END AS payment_status
+
+    FROM ekbill.quick_bills qb
+    WHERE qb.business_unique_code = $1
+    ORDER BY qb.created_at DESC
+    `,
     [business_unique_code]
   );
+
   return res.rows;
 };
+
 /* ================= GET BILL DETAILS ================= */
 export const getQuickBillDetails = async (quick_bill_unique_code, business_unique_code) => {
   const billRes = await pool.query(

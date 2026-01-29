@@ -50,14 +50,50 @@ export const createBillModel = async ({
 
 export const getBillsList = async (business_unique_code) => {
   const res = await pool.query(
-    `SELECT bill_unique_code, invoice_number, created_at, created_by
-     FROM ekbill.bills
-     WHERE business_unique_code=$1
-     ORDER BY created_at DESC`,
+    `
+    SELECT 
+      b.bill_unique_code,
+      b.invoice_number,
+      c.customer_name,
+      b.grand_total,
+      b.created_at,
+      b.created_by,
+
+      COALESCE((
+        SELECT SUM(p.amount_paid)
+        FROM ekbill.bill_payments p
+        WHERE p.bill_unique_code = b.bill_unique_code
+      ), 0) AS total_paid,
+
+      CASE
+        WHEN COALESCE((
+          SELECT SUM(p.amount_paid)
+          FROM ekbill.bill_payments p
+          WHERE p.bill_unique_code = b.bill_unique_code
+        ), 0) = 0 THEN 'UNPAID'
+
+        WHEN COALESCE((
+          SELECT SUM(p.amount_paid)
+          FROM ekbill.bill_payments p
+          WHERE p.bill_unique_code = b.bill_unique_code
+        ), 0) < b.grand_total THEN 'PARTIAL'
+
+        ELSE 'PAID'
+      END AS payment_status
+
+    FROM ekbill.bills b
+    LEFT JOIN ekbill.customers c
+      ON c.customer_unique_code = b.customer_unique_code
+
+    WHERE b.business_unique_code = $1
+    ORDER BY b.created_at DESC
+    `,
     [business_unique_code]
   );
+
   return res.rows;
 };
+
 
 
 export const getBillDetails = async (bill_unique_code, business_unique_code) => {
