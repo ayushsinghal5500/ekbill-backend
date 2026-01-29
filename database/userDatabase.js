@@ -13,6 +13,24 @@ CREATE TABLE IF NOT EXISTS ekbill.roles (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 `;
+const permissionTable = `
+CREATE TABLE IF NOT EXISTS ekbill.permissions (
+  permission_id SERIAL PRIMARY KEY,
+  permission_key VARCHAR(100) NOT NULL UNIQUE, -- e.g. CREATE_BILL, VIEW_REPORTS
+  module VARCHAR(50) NOT NULL,                 -- BILLING, INVENTORY, STAFF, SETTINGS
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`;
+const rolePermissionsTable = `
+CREATE TABLE IF NOT EXISTS ekbill.role_permissions (
+  role_permission_id SERIAL PRIMARY KEY,
+  role_id INT NOT NULL REFERENCES ekbill.roles(role_id) ON DELETE CASCADE,
+  permission_id INT NOT NULL REFERENCES ekbill.permissions(permission_id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (role_id, permission_id)
+);
+`;
 
 const adminTable = `
 CREATE TABLE IF NOT EXISTS ekbill.admins (
@@ -136,6 +154,10 @@ CREATE TABLE IF NOT EXISTS ekbill.business_staff (
   user_unique_code VARCHAR(50) NOT NULL REFERENCES ekbill.users(user_unique_code) ON DELETE CASCADE,
   status VARCHAR(30) DEFAULT 'active',
   joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_removed BOOLEAN DEFAULT FALSE,
+  removed_at TIMESTAMP,
+  removed_by VARCHAR(50),
+  removal_reason TEXT,
   UNIQUE (business_unique_code, user_unique_code)
 );
 `;
@@ -143,7 +165,7 @@ CREATE TABLE IF NOT EXISTS ekbill.business_staff (
 const businessStaffRolesTable = `
 CREATE TABLE IF NOT EXISTS ekbill.business_staff_roles (
   staff_role_id SERIAL PRIMARY KEY,
-  staff_unique_code VARCHAR(50) NOT NULL UNIQUE,
+  staff_unique_code VARCHAR(50) NOT NULL,
   role_name VARCHAR(50) NOT NULL,
   role_id INT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -170,16 +192,18 @@ const businessFinancialsTable = `
 CREATE TABLE IF NOT EXISTS ekbill.business_financials (
   financial_id SERIAL PRIMARY KEY,
   business_unique_code VARCHAR(50) NOT NULL unique REFERENCES ekbill.business_profiles(business_unique_code) ON DELETE CASCADE,
-  pan_number VARCHAR(20) unique,
-  gstin VARCHAR(20) unique,
+  pan_number VARCHAR(20),
+  gstin VARCHAR(20) ,
   bank_name VARCHAR(100) ,
   ifsc_code VARCHAR(20),
-  bank_account_number VARCHAR(50) unique,
-  upi_id VARCHAR(100) unique,
+  bank_account_number VARCHAR(50),
+  upi_id VARCHAR(100) ,
   bank_confirmed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  unique (business_unique_code, pan_number, gstin, bank_account_number, upi_id, ifsc_code)
+  UNIQUE (business_unique_code, gstin),
+  UNIQUE (business_unique_code, bank_account_number),
+  UNIQUE (business_unique_code, upi_id)
 );
 `;
 
@@ -283,6 +307,20 @@ CREATE TABLE ekbill.public_stores (
 );
 `;
 
+const staffProfileTable = `
+CREATE TABLE IF NOT EXISTS ekbill.staff_profiles (
+  staff_profile_id SERIAL PRIMARY KEY,
+  staff_profile_unique_code VARCHAR(50) NOT NULL UNIQUE,
+  staff_unique_code VARCHAR(50) NOT NULL UNIQUE REFERENCES ekbill.business_staff(staff_unique_code) ON DELETE CASCADE,
+  full_name VARCHAR(150) NOT NULL,
+  profile_photo_url TEXT,
+  joining_date DATE,
+  leaving_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (leaving_date IS NULL OR leaving_date >= joining_date)
+);
+`;
 (async () => {
   try {
     await pool.query(createSchema);
@@ -304,6 +342,9 @@ CREATE TABLE ekbill.public_stores (
     await pool.query(businessStaffRolesTable);
     await pool.query(busineesLedgerTable);
     await pool.query(publicStoresTable);
+    await pool.query(permissionTable);
+    await pool.query(rolePermissionsTable);
+    await pool.query(staffProfileTable);
 
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_entity_addresses_lookup

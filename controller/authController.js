@@ -1,18 +1,15 @@
-import {createSendOtpService, verifyOTPService } from "../service/authService.js";
+import {createSendOtpService, verifyOTPService} from "../service/authService.js";
 
 export const createSendOtpController = async (req, res) => {
     try {
-        const { phone, country_code } = req.body;
-        
+        const { phone, country_code } = req.body;        
         if (!phone || !country_code) {
             return res.status(400).json({ 
                 success: false,
                 error: 'Phone and country code are required' 
             });
-        }
-        
-        const result = await createSendOtpService(phone, country_code);
-        
+        }        
+        const result = await createSendOtpService(phone, country_code);        
         return res.status(200).json({ 
             success: true,
             message: 'OTP sent successfully',
@@ -55,8 +52,6 @@ export const verifyOtpController = async (req, res) => {
         });
     }
 };
-
-
 export const refreshTokenController = async (req, res) => {
     try {
         const { refresh_token } = req.body;
@@ -78,4 +73,36 @@ export const refreshTokenController = async (req, res) => {
             timestamp: new Date()
         });
     }
+};
+
+export const addStaffController = async (req, res) => {
+  try {
+    const { business_unique_code } = req.user;
+    const { phone, country_code, otp, name, joining_date, role_id } = req.body;
+
+    if (!phone || !country_code || !otp || !name || !role_id) {
+      return res.status(400).json({
+        success: false,
+        error: "All fields are required"
+      });
+    }
+
+    const result = await addStaffService({
+      business_unique_code,
+      phone,
+      country_code,
+      otp,
+      name,
+      joining_date,
+      role_id
+    });
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: error.message
+    });
+  }
 };

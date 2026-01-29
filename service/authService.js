@@ -75,7 +75,7 @@ export const verifyOTPService = async (phone, country_code, otp) => {
       business.business_unique_code,
       auth.user_unique_code
     );
-    await assignOwnerRole(staff.staff_unique_code);
+    await assignStaffRoleByName(staff.staff_unique_code, 'OWNER');
 
     // ✅ SINGLE SESSION TOKEN
     const session_token = generateSessionToken({
