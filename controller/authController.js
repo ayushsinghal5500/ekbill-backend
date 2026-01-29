@@ -94,7 +94,7 @@ export const addStaffController = async (req, res) => {
       otp,
       name,
       joining_date,
-      role_id
+      role_name
     });
 
     return res.status(200).json(result);
