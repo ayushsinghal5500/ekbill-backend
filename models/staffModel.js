@@ -4,7 +4,7 @@ import { generateUniqueCode } from "../utils/codeGenerator.js";
 export const findStaffByBusinessAndUser = async (business_unique_code, user_unique_code) => {
   const res = await pool.query(
     `SELECT * FROM ekbill.business_staff 
-     WHERE business_unique_code=$1 AND user_unique_code=$2`,
+     WHERE business_unique_code=$1 AND user_unique_code=$2  AND is_removed = FALSE`,
     [business_unique_code, user_unique_code]
   );
   return res.rows[0];
@@ -44,3 +44,16 @@ export const assignStaffRoleByName = async (staff_unique_code, role_name) => {
   return result.rows[0];
 };
 
+export const createStaffProfile = async ({staff_unique_code,full_name,staff_phone,country_code,profile_photo_url = null,joining_date,leaving_date = null}) => {
+  const staff_profile_unique_code = generateUniqueCode({ table: 'STFP' });
+  const res = await pool.query(
+    `INSERT INTO ekbill.staff_profiles 
+     (staff_profile_unique_code, staff_unique_code, full_name, staff_phone, country_code, profile_photo_url, joining_date, leaving_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (staff_unique_code) DO NOTHING
+     RETURNING *`,
+    [staff_profile_unique_code, staff_unique_code, full_name, staff_phone, country_code,profile_photo_url,joining_date,leaving_date]
+  );
+
+  return res.rows[0];
+};

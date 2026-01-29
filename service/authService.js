@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { generateOTP,otpExpiresAt } from "../utils/otp.js";
 import { validatePhone } from '../utils/phone.js';
 import {findUserByPhone, createUser,setUserVerified} from "../models/userModel.js";
-import { addOwnerAsStaff, assignStaffRoleByName } from "../models/staffModel.js";
+import { addOwnerAsStaff, assignStaffRoleByName ,createStaffProfile ,findStaffByBusinessAndUser} from "../models/staffModel.js";
 import { findBusinessByOwner, createBusiness } from "../models/businessModel.js";
 import {findAuthByPhone, upsertOTP, lockUser, ensureUserNotLocked, incrementFailedOTPAttempts, clearOTP, resetAfterUnlock} from "../models/authModel.js";
 import {createSession} from "../models/sessionModel.js";
@@ -108,8 +108,9 @@ export const verifyOTPService = async (phone, country_code, otp) => {
 };
 
 
-export const addStaffService = async (phone, country_code, otp, business_unique_code,name,role_name) => {
+export const addStaffService = async (phone, country_code, otp, business_unique_code,name,role_name,joinning_date) => {
   try {
+
     const auth = await findAuthByPhone(phone, country_code);
     if (!auth) throw new Error('Invalid OTP');
 
@@ -127,20 +128,37 @@ export const addStaffService = async (phone, country_code, otp, business_unique_
       }
       throw new Error('Invalid or expired OTP');
     }
+
     await clearOTP(auth.user_unique_code);
     await resetAfterUnlock(auth.user_unique_code);
     await setUserVerified(auth.user_unique_code);
 
-    
-    const staff = await addOwnerAsStaff(
-      business_unique_code,
-      user_unique_code
-    );
-    await assignStaffRoleByName(staff.staff_unique_code,role_name);
+     const user_unique_code = auth.user_unique_code;
+
+    const existingStaff = await findStaffByBusinessAndUser(business_unique_code,user_unique_code);
+
+    if (existingStaff) {
+      return {
+        success: false,
+        message: 'User already staff in this business'
+      };
+    }
+
+    const staff = await addOwnerAsStaff(business_unique_code, user_unique_code);
+
+    await createStaffProfile({
+      staff_unique_code: staff.staff_unique_code,
+      full_name: name,
+      staff_phone: phone,
+      country_code: country_code,
+      joinning_date
+    });
+
+    await assignStaffRoleByName(staff.staff_unique_code, role_name);
 
     return {
       success: true,
-      message: 'Login successful',
+      message: 'Staff added successfully',
     };
 
   } catch (error) {

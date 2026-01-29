@@ -313,12 +313,37 @@ CREATE TABLE IF NOT EXISTS ekbill.staff_profiles (
   staff_profile_unique_code VARCHAR(50) NOT NULL UNIQUE,
   staff_unique_code VARCHAR(50) NOT NULL UNIQUE REFERENCES ekbill.business_staff(staff_unique_code) ON DELETE CASCADE,
   full_name VARCHAR(150) NOT NULL,
+  staff_phone varchar(10),
+  country_code varchar(10),
   profile_photo_url TEXT,
   joining_date DATE,
   leaving_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CHECK (leaving_date IS NULL OR leaving_date >= joining_date)
+);
+`;
+
+const staff_attendance_logs =`
+CREATE TABLE IF NOT EXISTS ekbill.staff_attendance_logs (
+  attendance_log_id SERIAL PRIMARY KEY,
+  staff_unique_code VARCHAR(50) NOT NULL REFERENCES ekbill.business_staff(staff_unique_code) ON DELETE CASCADE,
+  punch_in_time TIMESTAMP NOT NULL,
+  punch_out_time TIMESTAMP,
+  log_date DATE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`;
+
+const staff_daily_attendance =`
+ CREATE TABLE IF NOT EXISTS ekbill.staff_daily_attendance (
+  attendance_id SERIAL PRIMARY KEY,
+  staff_unique_code VARCHAR(50) NOT NULL REFERENCES ekbill.business_staff(staff_unique_code) ON DELETE CASCADE,
+  attendance_date DATE NOT NULL,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('PRESENT','ABSENT','LEAVE','HALF_DAY')),
+  marked_by VARCHAR(50), -- owner or manager user_unique_code
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (staff_unique_code, attendance_date)
 );
 `;
 (async () => {
@@ -345,6 +370,8 @@ CREATE TABLE IF NOT EXISTS ekbill.staff_profiles (
     await pool.query(permissionTable);
     await pool.query(rolePermissionsTable);
     await pool.query(staffProfileTable);
+    await pool.query(staff_attendance_logs);
+    await pool.query(staff_daily_attendance);
 
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_entity_addresses_lookup
