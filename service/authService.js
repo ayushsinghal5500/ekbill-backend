@@ -106,3 +106,73 @@ export const verifyOTPService = async (phone, country_code, otp) => {
     throw new Error(error.message || 'OTP verification failed');
   }
 };
+
+
+export const addStaffService = async (phone, country_code, otp) => {
+  try {
+    const auth = await findAuthByPhone(phone, country_code);
+    if (!auth) throw new Error('Invalid OTP');
+
+    await ensureUserNotLocked(auth);
+
+    const now = new Date();
+    const isMatch = await bcrypt.compare(otp, auth.otp_hash);
+
+    if (!isMatch || !auth.otp_expires_at || auth.otp_expires_at < now) {
+      await incrementFailedOTPAttempts(auth.user_unique_code);
+
+      if (auth.failed_login_attempts + 1 >= MAX_FAILED) {
+        const lockUntil = new Date(now.getTime() + BLOCK_MIN * 60000);
+        await lockUser(auth.user_unique_code, lockUntil);
+      }
+
+      throw new Error('Invalid or expired OTP');
+    }
+
+    await clearOTP(auth.user_unique_code);
+    await resetAfterUnlock(auth.user_unique_code);
+    await setUserVerified(auth.user_unique_code);
+
+    let business = await findBusinessByOwner(auth.user_unique_code);
+    if (!business) {
+      business = await createBusiness({
+        user_unique_code: auth.user_unique_code,
+        phone
+      });
+    }
+
+    const staff = await addOwnerAsStaff(
+      business.business_unique_code,
+      auth.user_unique_code
+    );
+    await assignStaffRoleByName(staff.staff_unique_code, 'OWNER');
+
+    // ✅ SINGLE SESSION TOKEN
+    const session_token = generateSessionToken({
+      user_unique_code: auth.user_unique_code,
+      business_unique_code: business.business_unique_code
+    });
+
+    const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+    await createSession(
+      auth.user_unique_code,
+      business.business_unique_code,
+      session_token,
+      expires_at
+    );
+
+    return {
+      success: true,
+      message: 'Login successful',
+      data: {
+        session_token,
+        user_unique_code: auth.user_unique_code,
+        business_unique_code: business.business_unique_code
+      }
+    };
+
+  } catch (error) {
+    throw new Error(error.message || 'OTP verification failed');
+  }
+};

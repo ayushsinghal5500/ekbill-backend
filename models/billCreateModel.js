@@ -102,26 +102,40 @@ export const getBillDetails = async (bill_unique_code, business_unique_code) => 
      WHERE bill_unique_code=$1 AND business_unique_code=$2`,
     [bill_unique_code, business_unique_code]
   );
+
   if (!billRes.rows.length) return null;
 
   const itemsRes = await pool.query(
-    `SELECT item_unique_code,item_name,quantity,price,line_total
+    `SELECT 
+        item_unique_code,
+        product_name,
+        quantity,
+        selling_price,
+        line_total
      FROM ekbill.bill_items
      WHERE bill_unique_code=$1`,
     [bill_unique_code]
   );
 
   const paymentsRes = await pool.query(
-    `SELECT payment_unique_code,payment_mode,amount,remaining_due,created_at
+    `SELECT 
+        payment_unique_code,
+        payment_mode,
+        amount_paid,
+        payment_date,
+        created_at
      FROM ekbill.bill_payments
      WHERE bill_unique_code=$1
-     ORDER BY created_at ASC`,
+     ORDER BY payment_date ASC`,
     [bill_unique_code]
   );
 
   const chargesRes = await pool.query(
-    `SELECT charge_unique_code,charge_name,amount
-     FROM ekbill.bill_charges
+    `SELECT 
+        charge_unique_code,
+        charge_name,
+        charge_amount
+     FROM ekbill.charges
      WHERE bill_unique_code=$1`,
     [bill_unique_code]
   );
