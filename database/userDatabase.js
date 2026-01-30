@@ -260,7 +260,7 @@ CREATE TABLE IF NOT EXISTS ekbill.customers (
 const customerDetailsTable = `
 CREATE TABLE IF NOT EXISTS ekbill.customer_details (
   customer_detail_id SERIAL PRIMARY KEY,
-  customer_unique_code VARCHAR(50) NOT NULL REFERENCES ekbill.customers(customer_unique_code) ON DELETE CASCADE,
+  customer_unique_code VARCHAR(50) NOT NULL UNIQUE REFERENCES ekbill.customers(customer_unique_code) ON DELETE CASCADE,
   gender VARCHAR(20),
   dob DATE,
   anniversary DATE,
