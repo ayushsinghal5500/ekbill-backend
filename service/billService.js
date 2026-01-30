@@ -34,11 +34,10 @@ export const createBillService = async (data) => {
     const bill_unique_code = bill.bill_unique_code;
 
     // 🔹 ITEMS + STOCK
-    const processedProducts = new Set(); // Track products for low stock alert
+    const processedProducts = new Set(); 
 
     if (Array.isArray(data.items)) {
       for (const item of data.items) {
-        // Validate item
         if (!item.product_unique_code) {
           throw new Error("Product unique code is required for items");
         }
@@ -48,15 +47,24 @@ export const createBillService = async (data) => {
           );
         }
 
-        // Lock rows for this product first
-        await client.query(
-          `SELECT 1 FROM ekbill.product_stock_history
+        const quantity = Number(item.quantity);
+
+        // ✅ LOCK PRODUCT ROW (RACE CONDITION FIX)
+        const productRes = await client.query(
+          `SELECT low_stock_alert 
+           FROM ekbill.products
            WHERE product_unique_code=$1 AND business_unique_code=$2
            FOR UPDATE`,
           [item.product_unique_code, business_unique_code],
         );
 
-        // Get current stock
+        if (productRes.rowCount === 0) {
+          throw new Error(`Product not found: ${item.product_unique_code}`);
+        }
+
+        const lowStockLimit = Number(productRes.rows[0].low_stock_alert || 0);
+
+        // Get current stock AFTER lock
         const stockRes = await client.query(
           `SELECT COALESCE(SUM(
               CASE WHEN transaction_type IN ('OPENING','IN') THEN quantity
@@ -68,18 +76,12 @@ export const createBillService = async (data) => {
         );
 
         const current_stock = Number(stockRes.rows[0].current_stock);
-        const quantity = Number(item.quantity);
-
-        if (current_stock < quantity) {
-          throw new Error(
-            `Insufficient stock for product ${item.product_unique_code}. Available: ${current_stock}, Required: ${quantity}`,
-          );
-        }
+        const final_stock = current_stock - quantity; // can go negative
 
         // Add item to bill
         await addItem({ ...item, bill_unique_code }, client);
 
-        // Update stock history
+        // Update stock history (OUT)
         await client.query(
           `INSERT INTO ekbill.product_stock_history
            (history_unique_code, product_unique_code, business_unique_code, 
@@ -99,15 +101,18 @@ export const createBillService = async (data) => {
           ],
         );
 
-        // 🔹 Check low stock alert (only once per product in this transaction)
+        // 🔹 LOW STOCK ALERT (based on final stock)
         if (!processedProducts.has(item.product_unique_code)) {
-          await handleLowStockAlert(
-            {
-              product_unique_code: item.product_unique_code,
-              business_unique_code,
-            },
-            client,
-          );
+          if (lowStockLimit > 0 && final_stock <= lowStockLimit) {
+            await handleLowStockAlert(
+              {
+                product_unique_code: item.product_unique_code,
+                business_unique_code,
+                current_stock: final_stock,
+              },
+              client,
+            );
+          }
           processedProducts.add(item.product_unique_code);
         }
       }
@@ -213,7 +218,6 @@ export const createBillService = async (data) => {
 
     await client.query("COMMIT");
 
-    // Get final bill details with payment summary
     const billDetails = await client.query(
       `SELECT b.*,
           COALESCE((
@@ -223,8 +227,8 @@ export const createBillService = async (data) => {
           ), 0) AS total_paid
           FROM ekbill.bills b   
           WHERE b.bill_unique_code = $1`,      
-          [bill_unique_code],   
-        );
+      [bill_unique_code],   
+    );
 
     const finalBill = billDetails.rows[0];
 
@@ -247,6 +251,7 @@ export const createBillService = async (data) => {
     client.release();
   }
 };
+
 
 export const getBillsListService = async (business_unique_code) => {
   if (!business_unique_code)
