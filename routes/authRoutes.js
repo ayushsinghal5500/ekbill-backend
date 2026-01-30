@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post("/business/send-otp", createSendOtpController);
 router.post ("/business/resend-otp", createSendOtpController);
-router.post("/staff/add", authenticateJWT,addStaffController);
+//router.post("/staff/add", authenticateJWT,addStaffController);
 router.post ("/business/verify-otp", verifyOtpController);
 router.post("/auth/refresh-token", refreshTokenController);
 
