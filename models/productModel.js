@@ -526,39 +526,92 @@ export const getInitialCategoryProducts = async (business_unique_code) => {
       WHERE c.business_unique_code = $1 AND c.is_active = true
       ORDER BY c.category_name
     ),
+
+    stock AS (
+      SELECT 
+        product_unique_code,
+        business_unique_code,
+        SUM(
+          CASE 
+            WHEN transaction_type IN ('OPENING','IN') THEN quantity
+            WHEN transaction_type = 'OUT' THEN -quantity
+            ELSE 0
+          END
+        ) AS current_stock
+      FROM ekbill.product_stock_history
+      GROUP BY product_unique_code, business_unique_code
+    ),
+
     prods AS (
-      SELECT p.product_unique_code, p.product_name, p.category_unique_code,
-             c.category_name, pm.image_url, pp.selling_price,
-             pp.gst_rate AS gst_percentage, pp.price_includes_tax AS is_gst_inclusive
+      SELECT 
+        p.product_unique_code,
+        p.product_name,
+        p.category_unique_code,
+        c.category_name,
+        p.created_at,
+
+        /* Latest Image Only */
+        pm.image_url,
+
+        /* Pricing (single row assumed, still left join safe) */
+        pp.selling_price,
+        pp.gst_rate AS gst_percentage,
+        pp.price_includes_tax AS is_gst_inclusive,
+
+        /* Pre-calculated stock */
+        COALESCE(s.current_stock, 0) AS current_stock
+
       FROM ekbill.products p
-      LEFT JOIN ekbill.categories c ON p.category_unique_code = c.category_unique_code
-      LEFT JOIN ekbill.product_pricing pp ON pp.product_unique_code = p.product_unique_code
-      LEFT JOIN ekbill.product_media pm ON pm.product_unique_code = p.product_unique_code
-      WHERE p.business_unique_code = $1 AND p.is_active = true
-      ORDER BY p.created_at DESC
+
+      LEFT JOIN ekbill.categories c 
+        ON p.category_unique_code = c.category_unique_code
+
+      LEFT JOIN ekbill.product_pricing pp 
+        ON pp.product_unique_code = p.product_unique_code
+
+      LEFT JOIN LATERAL (SELECT image_url FROM ekbill.product_media pm  WHERE pm.product_unique_code = p.product_unique_code ORDER BY pm.created_at DESC  LIMIT 1 ) pm ON true
+
+      LEFT JOIN stock s
+        ON s.product_unique_code = p.product_unique_code
+       AND s.business_unique_code = p.business_unique_code
+
+      WHERE p.business_unique_code = $1 
+        AND p.is_active = true
     )
+
     SELECT
-      (SELECT json_agg(json_build_object(
-        'category_unique_code', cats.category_unique_code,
-        'category_name', cats.category_name
-      ) ORDER BY cats.category_name) FROM cats) AS categories,
-      (SELECT json_agg(json_build_object(
-        'product_unique_code', prods.product_unique_code,
-        'product_name', prods.product_name,
-        'category_unique_code', prods.category_unique_code,
-        'category_name', prods.category_name,
-        'image_url', prods.image_url,
-        'selling_price', prods.selling_price,
-        'gst_percentage', prods.gst_percentage,
-        'is_gst_inclusive', prods.is_gst_inclusive
-      ) ORDER BY prods.product_unique_code) FROM prods) AS products
+      (
+        SELECT json_agg(json_build_object(
+          'category_unique_code', cats.category_unique_code,
+          'category_name', cats.category_name
+        ) ORDER BY cats.category_name)
+        FROM cats
+      ) AS categories,
+
+      (
+        SELECT json_agg(json_build_object(
+          'product_unique_code', prods.product_unique_code,
+          'product_name', prods.product_name,
+          'category_unique_code', prods.category_unique_code,
+          'category_name', prods.category_name,
+          'image_url', prods.image_url,
+          'selling_price', prods.selling_price,
+          'gst_percentage', prods.gst_percentage,
+          'is_gst_inclusive', prods.is_gst_inclusive,
+          'current_stock', prods.current_stock
+        ) ORDER BY prods.created_at DESC)
+        FROM prods
+      ) AS products
   `;
 
   const { rows } = await pool.query(query, [business_unique_code]);
   const result = rows[0];
 
   return {
-    categories: [{ category_unique_code: "ALL", category_name: "All" }, ...(result.categories || [])],
+    categories: [
+      { category_unique_code: "ALL", category_name: "All" },
+      ...(result.categories || [])
+    ],
     products: result.products || []
   };
 };

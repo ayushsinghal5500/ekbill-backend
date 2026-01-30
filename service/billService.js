@@ -4,10 +4,7 @@ import { addItem } from "../models/billItemsModel.js";
 import { addCharge } from "../models/billChargesModel.js";
 import { addDiscount } from "../models/billDiscountsModel.js";
 import { addPayment } from "../models/BillPaymentsModel.js";
-import {
-  addCustomerLedgerEntry,
-  getLastCustomerBalance,
-} from "../models/customerLedgerModel.js";
+import {addCustomerLedgerEntry,getLastCustomerBalance,} from "../models/customerLedgerModel.js";
 import { handleLowStockAlert } from "../utils/lowStockAlert.js";
 
 export const createBillService = async (data) => {
