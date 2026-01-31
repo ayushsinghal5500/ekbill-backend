@@ -549,6 +549,8 @@ export const getInitialCategoryProducts = async (business_unique_code) => {
         p.category_unique_code,
         c.category_name,
         p.created_at,
+        p.low_stock_alert,
+
 
         /* Latest Image Only */
         pm.image_url,
@@ -598,7 +600,8 @@ export const getInitialCategoryProducts = async (business_unique_code) => {
           'selling_price', prods.selling_price,
           'gst_percentage', prods.gst_percentage,
           'is_gst_inclusive', prods.is_gst_inclusive,
-          'current_stock', prods.current_stock
+          'current_stock', prods.current_stock,prods.low_stock_alert,
+
         ) ORDER BY prods.created_at DESC)
         FROM prods
       ) AS products

@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import { generateOTP,otpExpiresAt } from "../utils/otp.js";
 import { validatePhone } from '../utils/phone.js';
 import {findUserByPhone, createUser,setUserVerified} from "../models/userModel.js";
-import { addOwnerAsStaff, assignStaffRoleByName ,createStaffProfile ,findStaffByBusinessAndUser} from "../models/staffModel.js";
+import { addOwnerAsStaff, assignOwnerRole } from "../models/staffModel.js";
 import { findBusinessByOwner, createBusiness } from "../models/businessModel.js";
 import {findAuthByPhone, upsertOTP, lockUser, ensureUserNotLocked, incrementFailedOTPAttempts, clearOTP, resetAfterUnlock} from "../models/authModel.js";
 import {createSession} from "../models/sessionModel.js";
@@ -75,7 +75,7 @@ export const verifyOTPService = async (phone, country_code, otp) => {
       business.business_unique_code,
       auth.user_unique_code
     );
-    await assignStaffRoleByName(staff.staff_unique_code, 'OWNER');
+    await assignOwnerRole(staff.staff_unique_code );
 
     // ✅ SINGLE SESSION TOKEN
     const session_token = generateSessionToken({
