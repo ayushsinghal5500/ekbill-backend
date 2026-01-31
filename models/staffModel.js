@@ -32,6 +32,4 @@ export const assignOwnerRole = async (staff_unique_code) => {
      VALUES ($1,'owner',3) ON CONFLICT DO NOTHING`,
     [staff_unique_code]
   );
-
-  return res.rows[0];
 };
